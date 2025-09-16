@@ -6,7 +6,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default [
   { ignores: ["dist/**", "node_modules/**"] },
-
   {
     files: ["src/**/*.ts"],
     languageOptions: {
@@ -28,7 +27,6 @@ export default [
       "no-console": "off",
     },
   },
-
   {
     files: ["tests/**/*.ts"],
     languageOptions: {
@@ -37,9 +35,6 @@ export default [
       sourceType: "module",
     },
     plugins: { "@typescript-eslint": tseslint },
-    rules: {
-      "@typescript-eslint/no-misused-promises": "off",
-      "@typescript-eslint/consistent-type-imports": "warn",
-    },
+    rules: { "@typescript-eslint/no-misused-promises": "off" },
   },
 ];

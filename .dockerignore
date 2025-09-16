@@ -1,7 +1,12 @@
 node_modules
 dist
 .git
+.github
+.husky
 .gitignore
+tests
+Dockerfile
+docker-compose.yml
 .env
 .vscode
 *.log

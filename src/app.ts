@@ -86,7 +86,11 @@ export async function createApp(env = envReal) {
 
   app.get("/v1/notes/:id", async (req, reply) => {
     const { id } = NoteId.parse(req.params);
-    const rows = await q<any[]>("SELECT id,msg,created_at FROM notes WHERE id=?", [id], "select_one");
+    const rows = await q<any[]>(
+      "SELECT id,msg,created_at FROM notes WHERE id=?",
+      [id],
+      "select_one"
+    );
     if (rows.length === 0) return reply.code(404).send({ error: "not_found" });
     return rows[0];
   });
@@ -94,7 +98,7 @@ export async function createApp(env = envReal) {
   app.post("/v1/notes", async (req, reply) => {
     const body = NoteCreate.parse(req.body);
     const r = await q<any>("INSERT INTO notes(msg) VALUES (?)", [body.msg], "insert");
-    return reply.code(201).send({ id: r.insertId, msg: body.msg });
+    return reply.code(201).send({ id: (r as any).insertId, msg: body.msg });
   });
 
   app.patch("/v1/notes/:id", async (req, reply) => {

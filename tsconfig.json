@@ -7,7 +7,7 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["node", "vitest"]   // <- eklendi
+    "types": ["node", "vitest"]
   },
-  "include": ["src", "tests"]      // <- testler dahil
+  "include": ["src", "tests"]
 }
