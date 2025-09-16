@@ -1,16 +1,32 @@
-import { q } from "../db.js";
+import { kdb } from "../db.kysely.js";
+import type { InsertResult, Selectable } from "kysely";
+import type { NotesTable } from "../db.kysely.js";
 
-export const listNotes = () =>
-  q("SELECT id,msg,created_at FROM notes ORDER BY id DESC LIMIT 50");
+export const listNotes = (): Promise<Selectable<NotesTable>[]> =>
+  kdb.selectFrom("notes")
+     .select(["id","msg","created_at"])
+     .orderBy("id","desc")
+     .limit(50)
+     .execute();
 
-export const getNote = (id: number) =>
-  q<any[]>("SELECT id,msg,created_at FROM notes WHERE id=?", [id], "select_one");
+export const getNote = (id: number): Promise<Selectable<NotesTable>[]> =>
+  kdb.selectFrom("notes")
+     .select(["id","msg","created_at"])
+     .where("id","=",id)
+     .execute();
 
-export const createNote = (msg: string) =>
-  q<any>("INSERT INTO notes(msg) VALUES (?)", [msg], "insert");
+export const createNote = (msg: string): Promise<InsertResult> =>
+  kdb.insertInto("notes")
+     .values({ msg })
+     .executeTakeFirstOrThrow(); 
 
 export const updateNote = (id: number, msg: string) =>
-  q<any>("UPDATE notes SET msg=? WHERE id=?", [msg, id], "update");
+  kdb.updateTable("notes")
+     .set({ msg })
+     .where("id","=",id)
+     .executeTakeFirst();
 
 export const deleteNote = (id: number) =>
-  q<any>("DELETE FROM notes WHERE id=?", [id], "delete");
+  kdb.deleteFrom("notes")
+     .where("id","=",id)
+     .executeTakeFirst();

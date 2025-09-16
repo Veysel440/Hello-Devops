@@ -1,19 +1,24 @@
 name: ci
 on:
-  push: { branches: ["main"] }
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
   pull_request:
+
 jobs:
   test-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.14.0 }
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: "pnpm" }
-      - run: corepack enable
       - run: pnpm i --frozen-lockfile
-      - run: pnpm build
+      - run: pnpm coverage
+
   image:
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request'
     needs: [test-build]
     runs-on: ubuntu-latest
     permissions: { contents: read, packages: write }
@@ -25,7 +30,19 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=${{ github.sha }}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern=v{{major}}.{{minor}}
       - uses: docker/build-push-action@v6
         with:
           push: true
-          tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

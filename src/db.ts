@@ -1,5 +1,4 @@
 import mysql from "mysql2/promise";
-import client from "prom-client";
 import { env } from "./config.js";
 
 export const pool = mysql.createPool({
@@ -8,22 +7,15 @@ export const pool = mysql.createPool({
   user: env.DB_USER,
   password: env.DB_PASS,
   database: env.DB_NAME,
+  waitForConnections: true,
   connectionLimit: 10,
+  queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 5_000
 });
 
-const dbDur = new client.Histogram({
-  name: "db_query_duration_ms",
-  help: "DB query duration",
-  labelNames: ["op"],
-  buckets: [5, 10, 20, 50, 100, 200, 500, 1000],
-});
-
-export async function q<T = any>(sql: string, params: any[] = [], op = "query") {
-  const end = dbDur.startTimer({ op });
-  try {
-    const [rows] = await pool.query(sql, params as any);
-    return rows as T;
-  } finally {
-    end();
-  }
+export async function q<T=any>(sql: string, params: any[] = [], kind?: "select_one"|"insert"|"update"|"delete"): Promise<T> {
+  const [rows] = await pool.query(sql, params);
+  // @ts-ignore
+  return rows;
 }
