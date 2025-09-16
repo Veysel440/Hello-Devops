@@ -1,5 +1,4 @@
-import { Kysely, MysqlDialect } from "kysely";
-import type { Generated } from "kysely";
+import { Kysely, MysqlDialect, Generated } from "kysely";
 import mysql from "mysql2";
 import { env } from "./config.js";
 
@@ -8,9 +7,7 @@ export interface NotesTable {
   msg: string;
   created_at: Generated<Date>;
 }
-export interface DB {
-  notes: NotesTable;
-}
+export interface DB { notes: NotesTable }
 
 export const kdb = new Kysely<DB>({
   dialect: new MysqlDialect({
@@ -21,7 +18,7 @@ export const kdb = new Kysely<DB>({
       password: env.DB_PASS,
       database: env.DB_NAME,
       waitForConnections: true,
-      connectionLimit: 10
-    })
-  })
+      connectionLimit: 10,
+    }),
+  }),
 });

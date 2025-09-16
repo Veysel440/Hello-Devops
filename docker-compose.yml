@@ -4,8 +4,17 @@ services:
     environment:
       MYSQL_DATABASE: app
       MYSQL_ROOT_PASSWORD: "Veysel.12"
-    volumes: ["dbdata:/var/lib/mysql"]
+    volumes:
+      - dbdata:/var/lib/mysql
+    ports:
+      - "3307:3306"   # host:container
+    healthcheck:
+      test: ["CMD-SHELL","mysqladmin ping -h 127.0.0.1 -u root -p$${MYSQL_ROOT_PASSWORD} || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
     restart: unless-stopped
+
   migrator:
     build: .
     env_file: .env
@@ -18,7 +27,8 @@ services:
   api:
     build: .
     env_file: .env
-    ports: ["8080:8080"]
+    ports:
+      - "8080:8080"
     depends_on:
       mysql:
         condition: service_healthy

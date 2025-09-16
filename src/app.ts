@@ -37,14 +37,16 @@ export async function createApp(env = envReal) {
     crossOriginResourcePolicy: { policy: "cross-origin" }
   });
 
-  await app.register(swagger, {
-    openapi: {
-      info: { title: "hello-devops API", version: "1.0.0" },
-      servers: [{ url: `http://localhost:${env.PORT}` }],
-      tags: [{ name: "notes" }, { name: "health" }]
-    }
-  });
-  await app.register(swaggerUi, { routePrefix: "/docs" });
+  if (process.env.SWAGGER_ENABLED === "true") {
+    await app.register(swagger, {
+      openapi: {
+        info: { title: "hello-devops API", version: "1.0.0" },
+        servers: [{ url: `http://localhost:${env.PORT}` }],
+        tags: [{ name: "notes" }, { name: "health" }]
+      }
+    });
+    await app.register(swaggerUi, { routePrefix: "/docs" });
+  }
 
   const origins = env.CORS_ORIGINS === "*" ? true : env.CORS_ORIGINS.split(",").map(s => s.trim());
   await app.register(cors, {

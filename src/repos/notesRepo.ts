@@ -1,5 +1,5 @@
 import { kdb } from "../db.kysely.js";
-import type { InsertResult, Selectable } from "kysely";
+import type { Selectable, InsertResult } from "kysely";
 import type { NotesTable } from "../db.kysely.js";
 
 export const listNotes = (): Promise<Selectable<NotesTable>[]> =>
@@ -18,7 +18,7 @@ export const getNote = (id: number): Promise<Selectable<NotesTable>[]> =>
 export const createNote = (msg: string): Promise<InsertResult> =>
   kdb.insertInto("notes")
      .values({ msg })
-     .executeTakeFirstOrThrow(); 
+     .executeTakeFirstOrThrow();
 
 export const updateNote = (id: number, msg: string) =>
   kdb.updateTable("notes")
