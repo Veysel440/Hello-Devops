@@ -2,6 +2,14 @@
   "name": "hello-devops",
   "private": true,
   "type": "module",
+  "lint-staged": {
+    "*.{ts,js,json,md,yml,yaml}": [
+      "prettier -w"
+    ],
+    "src/**/*.ts": [
+      "eslint --fix"
+    ]
+  },
   "scripts": {
     "dev": "tsx src/server.ts",
     "build": "tsc",
@@ -9,7 +17,8 @@
     "migrate": "tsx src/migrate.ts"
   },
   "dependencies": {
-    "@fastify/cors": "^10.0.1",
+    "@fastify/cors": "^8.4.2",
+    "@fastify/helmet": "11.1.1",
     "@fastify/rate-limit": "^9.0.0",
     "dotenv": "^16.4.5",
     "fastify": "^4.28.1",

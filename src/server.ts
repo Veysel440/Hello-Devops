@@ -7,6 +7,8 @@ import { env } from "./config.js";
 import { registerErrorHandler } from "./errors.js";
 import { q, pool } from "./db.js";
 import { NoteCreate, NoteId } from "./schemas.js";
+import { createApp } from "./app.js";
+
 
 const app = Fastify({
   logger: { level: "info" },
@@ -18,10 +20,10 @@ await app.register(rateLimit, {
   max: env.RATE_LIMIT_MAX,
   timeWindow: env.RATE_LIMIT_TIME,
   addHeaders: {
-    'x-ratelimit-limit': true,
-    'x-ratelimit-remaining': true,
-    'x-ratelimit-reset': true,
-    'retry-after': true,
+    "x-ratelimit-limit": true,
+    "x-ratelimit-remaining": true,
+    "x-ratelimit-reset": true,
+    "retry-after": true,
   },
 });
 
@@ -35,12 +37,12 @@ const httpDur = new client.Histogram({
   buckets: [50, 100, 200, 300, 500, 1000, 2000],
 });
 app.addHook("onRequest", (req, _reply, done) => {
-  // @ts-expect-error augment
+ 
   req.__start = performance.now();
   done();
 });
 app.addHook("onResponse", (req, reply, done) => {
-  // @ts-expect-error augment
+ 
   const start = req.__start ?? performance.now();
   const dur = performance.now() - start;
   const route = req.routeOptions?.url ?? req.url;
@@ -73,7 +75,9 @@ app.post("/v1/notes", async (req, reply) => {
 
 app.patch("/v1/notes/:id", async (req, reply) => {
   const { id } = NoteId.parse(req.params);
-  const body = NoteCreate.partial().refine(b => b.msg !== undefined, "msg required").parse(req.body);
+  const body = NoteCreate.partial()
+    .refine((b) => b.msg !== undefined, "msg required")
+    .parse(req.body);
   const r = await q<any>("UPDATE notes SET msg=? WHERE id=?", [body.msg, id], "update");
 
   if (r.affectedRows === 0) return reply.code(404).send({ error: "not_found" });
