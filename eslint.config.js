@@ -7,7 +7,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default [
   { ignores: ["dist/**", "node_modules/**"] },
 
-  // Typed linting: src
   {
     files: ["src/**/*.ts"],
     languageOptions: {
@@ -30,7 +29,6 @@ export default [
     },
   },
 
-  // Untyped: tests (hızlı, hata yok)
   {
     files: ["tests/**/*.ts"],
     languageOptions: {

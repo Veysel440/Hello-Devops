@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import Fastify from "fastify";
 import helmet from "@fastify/helmet";
 import cors from "@fastify/cors";
@@ -9,21 +10,20 @@ import { registerErrorHandler } from "./errors.js";
 import { NoteCreate, NoteId } from "./schemas.js";
 import { buildInfo } from "./version.js";
 import { q } from "./db.js";
-import crypto from "node:crypto";
 
 export async function createApp(env = envReal) {
   const app = Fastify({
     logger: { level: "info" },
     genReqId: () => crypto.randomUUID(),
     requestTimeout: env.REQUEST_TIMEOUT,
-    bodyLimit: env.BODY_LIMIT,
+    bodyLimit: env.BODY_LIMIT
   });
 
   await app.register(helmet, {
     global: true,
     contentSecurityPolicy: false,
     hsts: env.HELMET_HSTS ? { maxAge: 15552000 } : false,
-    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginResourcePolicy: { policy: "cross-origin" }
   });
 
   const origins = env.CORS_ORIGINS === "*" ? true : env.CORS_ORIGINS.split(",").map(s => s.trim());
@@ -31,7 +31,7 @@ export async function createApp(env = envReal) {
     origin: origins,
     methods: ["GET","POST","PATCH","DELETE","OPTIONS"],
     allowedHeaders: ["Content-Type","Authorization","X-Request-Id"],
-    credentials: true,
+    credentials: true
   });
 
   await app.register(rateLimit, {
@@ -41,8 +41,8 @@ export async function createApp(env = envReal) {
       "x-ratelimit-limit": true,
       "x-ratelimit-remaining": true,
       "x-ratelimit-reset": true,
-      "retry-after": true,
-    },
+      "retry-after": true
+    }
   });
 
   registerErrorHandler(app);
@@ -53,7 +53,6 @@ export async function createApp(env = envReal) {
     done();
   });
 
-  
   const registry = new client.Registry();
   client.collectDefaultMetrics({ register: registry });
 
@@ -62,11 +61,10 @@ export async function createApp(env = envReal) {
     help: "HTTP request duration",
     labelNames: ["route","method","status"],
     buckets: [50,100,200,300,500,1000,2000],
-    registers: [registry],
+    registers: [registry]
   });
 
   app.addHook("onResponse", (req, reply, done) => {
- 
     const start = req.__start ?? performance.now();
     const dur = performance.now() - start;
     const route = req.routeOptions?.url ?? req.url;
@@ -96,7 +94,6 @@ export async function createApp(env = envReal) {
   app.post("/v1/notes", async (req, reply) => {
     const body = NoteCreate.parse(req.body);
     const r = await q<any>("INSERT INTO notes(msg) VALUES (?)", [body.msg], "insert");
-   
     return reply.code(201).send({ id: r.insertId, msg: body.msg });
   });
 
@@ -104,16 +101,14 @@ export async function createApp(env = envReal) {
     const { id } = NoteId.parse(req.params);
     const body = NoteCreate.partial().refine(b => b.msg !== undefined, "msg required").parse(req.body);
     const r = await q<any>("UPDATE notes SET msg=? WHERE id=?", [body.msg, id], "update");
-   
-    if (r.affectedRows === 0) return reply.code(404).send({ error: "not_found" });
+    if ((r as any).affectedRows === 0) return reply.code(404).send({ error: "not_found" });
     return { id, msg: body.msg };
   });
 
   app.delete("/v1/notes/:id", async (req, reply) => {
     const { id } = NoteId.parse(req.params);
     const r = await q<any>("DELETE FROM notes WHERE id=?", [id], "delete");
-  
-    if (r.affectedRows === 0) return reply.code(404).send({ error: "not_found" });
+    if ((r as any).affectedRows === 0) return reply.code(404).send({ error: "not_found" });
     return reply.code(204).send();
   });
 
