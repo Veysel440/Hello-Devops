@@ -16,6 +16,37 @@ jobs:
       - run: pnpm build
       - run: pnpm test
 
+  k6-smoke:
+    needs: [test-build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: "pnpm" }
+      - run: corepack enable
+      - run: pnpm i --frozen-lockfile
+      - run: pnpm build
+      - name: Start API
+        env:
+          PORT: 8080
+          SWAGGER_ENABLED: "false"
+        run: |
+          node dist/server.js &
+          for i in {1..30}; do
+            curl -fsS http://localhost:8080/healthz && break
+            sleep 1
+          done
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+      - name: Run k6 smoke
+        env: { BASE_URL: "http://localhost:8080" }
+        run: k6 run tests/load/smoke.js
+      - name: Upload k6 summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-summary
+          path: k6-summary.json
+
   image:
     if: github.ref == 'refs/heads/main'
     needs: [test-build]
@@ -88,21 +119,17 @@ jobs:
       - name: Install cosign
         uses: sigstore/cosign-installer@v3.6.0
       - name: Cosign sign (keyless)
-        env:
-          COSIGN_EXPERIMENTAL: 1
-        run: |
-          cosign sign --yes ghcr.io/${{ github.repository }}:${{ github.sha }}
+        env: { COSIGN_EXPERIMENTAL: 1 }
+        run: cosign sign --yes ghcr.io/${{ github.repository }}:${{ github.sha }}
 
   verify:
     needs: [image]
     runs-on: ubuntu-latest
     permissions: { id-token: write, contents: read, packages: read }
     steps:
-      - name: Install cosign
-        uses: sigstore/cosign-installer@v3.6.0
+      - uses: sigstore/cosign-installer@v3.6.0
       - name: Verify signature
-        env:
-          COSIGN_EXPERIMENTAL: 1
+        env: { COSIGN_EXPERIMENTAL: 1 }
         run: |
           cosign verify ghcr.io/${{ github.repository }}:${{ github.sha }} \
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \

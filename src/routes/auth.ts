@@ -1,8 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import crypto from "node:crypto";
 import * as users from "../repos/usersRepo.js";
-import type { UserRow } from "../repos/usersRepo.js";
 import { env } from "../config.js";
+import { AppError } from "../errors.js";
 
 function ttlToMs(ttl: string) {
   const m = /^(\d+)([smhd])$/.exec(ttl);
@@ -13,7 +13,6 @@ function ttlToMs(ttl: string) {
 }
 
 export async function authRoutes(app: FastifyInstance) {
-  // REGISTER (opsiyonel)
   app.post(
     "/auth/register",
     {
@@ -29,15 +28,13 @@ export async function authRoutes(app: FastifyInstance) {
     },
     async (req, reply) => {
       const b = (req.body ?? {}) as { username?: string; password?: string };
-      if (!b.username || !b.password) {
-        return reply.code(400).send({ error: "username_password_required" });
-      }
+      if (!b.username || !b.password) throw new AppError("username_password_required", 400);
       await users.createUser(b.username, b.password, ["admin"]);
       return reply.code(201).send({ ok: true });
     }
   );
 
-  // LOGIN
+ 
   app.post(
     "/auth/login",
     {
@@ -65,15 +62,11 @@ export async function authRoutes(app: FastifyInstance) {
     },
     async (req, reply) => {
       const b = (req.body ?? {}) as { username?: string; password?: string };
-      if (!b.username || !b.password) {
-        return reply.code(400).send({ error: "username_password_required" });
-      }
+      if (!b.username || !b.password) throw new AppError("username_password_required", 400);
 
-      const user = (await users.findByUsername(b.username)) as UserRow | undefined;
-      if (!user) return reply.code(401).send({ error: "invalid_credentials" });
-
-      const ok = await users.verifyPassword(user, b.password);
-      if (!ok) return reply.code(401).send({ error: "invalid_credentials" });
+      const user = await users.findByUsername(b.username);
+      if (!user || !(await users.verifyPassword(user.password_hash, b.password)))
+        throw new AppError("invalid_credentials", 401);
 
       const roles: string[] = Array.isArray(user.roles)
         ? (user.roles as string[])
@@ -86,7 +79,7 @@ export async function authRoutes(app: FastifyInstance) {
       await users.saveRefresh(user.id, jti, refreshExp);
       await users.enforceRefreshLimit(user.id, 5);
 
-      // Tek jwt plugin kullanıldığı için burada 'secret' verME!
+  
       const refresh = app.jwt.sign(
         { sub: user.id, roles, jti, type: "refresh" },
         { expiresIn: env.JWT_REFRESH_TTL }
@@ -96,7 +89,7 @@ export async function authRoutes(app: FastifyInstance) {
     }
   );
 
-  // REFRESH
+
   app.post(
     "/auth/refresh",
     {
@@ -119,15 +112,15 @@ export async function authRoutes(app: FastifyInstance) {
     },
     async (req, reply) => {
       const b = (req.body ?? {}) as { refresh_token?: string };
-      if (!b.refresh_token) return reply.code(400).send({ error: "refresh_token_required" });
+      if (!b.refresh_token) throw new AppError("refresh_token_required", 400);
 
       try {
         const payload = app.jwt.verify(b.refresh_token) as any;
         if (!payload?.jti || !(await users.isRefreshValid(payload.jti))) {
-          return reply.code(401).send({ error: "invalid_refresh" });
+          throw new AppError("invalid_refresh", 401);
         }
 
-        // rotate
+      
         await users.revokeRefresh(payload.jti);
         const jti = crypto.randomUUID();
         const refreshExp = new Date(Date.now() + ttlToMs(env.JWT_REFRESH_TTL));
@@ -145,12 +138,12 @@ export async function authRoutes(app: FastifyInstance) {
 
         return { token_type: "Bearer", access_token: access, refresh_token: refresh };
       } catch {
-        return reply.code(401).send({ error: "invalid_refresh" });
+        throw new AppError("invalid_refresh", 401);
       }
     }
   );
 
-  // LOGOUT
+
   app.post(
     "/auth/logout",
     {
@@ -162,7 +155,7 @@ export async function authRoutes(app: FastifyInstance) {
     },
     async (req, reply) => {
       const b = (req.body ?? {}) as { refresh_token?: string };
-      if (!b.refresh_token) return reply.code(400).send({ error: "refresh_token_required" });
+      if (!b.refresh_token) throw new AppError("refresh_token_required", 400);
       try {
         const payload = app.jwt.verify(b.refresh_token) as any;
         if (payload?.jti) await users.revokeRefresh(payload.jti);
@@ -171,7 +164,6 @@ export async function authRoutes(app: FastifyInstance) {
     }
   );
 
-  // ME
   app.get(
     "/auth/me",
     {

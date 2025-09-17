@@ -14,3 +14,4 @@ coverage
 pnpm-debug.log
 docker-compose*.yml
 Dockerfile*
+nyc_output

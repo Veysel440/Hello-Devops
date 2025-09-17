@@ -1,34 +1,39 @@
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+
 export class AppError extends Error {
-  status: number;
   code: string;
-  data?: unknown;
-  constructor(status: number, code: string, message?: string, data?: unknown) {
+  status: number;
+  details?: unknown;
+
+  constructor(code: string, status = 400, message?: string, details?: unknown) {
     super(message ?? code);
-    this.status = status;
     this.code = code;
-    this.data = data;
+    this.status = status;
+    this.details = details;
   }
 }
 
-import type { FastifyInstance } from "fastify";
-
 export function registerErrorHandler(app: FastifyInstance) {
-  app.setErrorHandler((err, _req, reply) => {
-    const isProd = process.env.NODE_ENV === "production";
-    const status = (err as any)?.status ?? 500;
-
-    if (err instanceof AppError) {
-      return reply.code(err.status).send({
-        error: { code: err.code, message: err.message, ...(err.data ? { data: err.data } : {}) },
-      });
+  app.setErrorHandler((err: any, _req: FastifyRequest, reply: FastifyReply) => {
+  
+    if (err?.code === "ER_BAD_DB_ERROR" || err?.code === "ECONNREFUSED") {
+      try { app.metrics?.dbErrors.inc(); } catch {}
     }
 
-    app.log.error({ err }, "unhandled_error");
-    return reply.code(status).send({
-      error: {
-        code: "internal_error",
-        message: isProd ? "internal error" : (err as any)?.message ?? "internal error",
-      },
-    });
+ 
+    if (err instanceof AppError) {
+      return reply
+        .code(err.status)
+        .send({ error: err.code, details: err.details ?? undefined });
+    }
+
+  
+   const status = typeof err?.statusCode === "number" ? err.statusCode : 500;
+const body: any = { error: "internal_error" };
+
+if (process.env.NODE_ENV !== "production") {
+  body.details = { message: err?.message, stack: err?.stack };
+}
+return reply.code(status).send(body);
   });
 }

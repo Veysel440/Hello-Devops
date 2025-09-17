@@ -27,6 +27,7 @@ declare module "fastify" {
       registry: Registry;
       httpDur: Histogram<string>;
       notesCreated: Counter<string>;
+       dbErrors: { inc: (v?: number) => void };
     };
   }
 }
