@@ -9,7 +9,6 @@ async function plugin(app: FastifyInstance) {
     sign: { expiresIn: env.JWT_ACCESS_TTL },
   });
 
-  // Refresh JWT (ayrı secret + namespace)
   await app.register(jwt, {
     secret: env.JWT_REFRESH_SECRET,
     sign: { expiresIn: env.JWT_REFRESH_TTL },

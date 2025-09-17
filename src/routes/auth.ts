@@ -10,8 +10,8 @@ export async function authRoutes(app: FastifyInstance) {
     const userId = 1;
     const roles = ["admin", "writer"];
 
-    const access = app.jwt.sign({ sub: userId, roles });     // access
-    const refresh = app.refresh.sign({ sub: userId, roles });      // refresh (namespace)
+    const access = app.jwt.sign({ sub: userId, roles });     
+    const refresh = app.refresh.sign({ sub: userId, roles });     
 
     return { token_type: "Bearer", access_token: access, refresh_token: refresh, roles };
   });
