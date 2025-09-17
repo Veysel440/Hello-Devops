@@ -1,12 +1,12 @@
 # ---------- deps
-FROM node:20-alpine AS deps
+FROM node:24-alpine AS deps
 WORKDIR /app
 RUN addgroup -S nodejs && adduser -S node -G nodejs
 COPY package.json pnpm-lock.yaml ./
 RUN corepack enable && pnpm i --frozen-lockfile
 
 # ---------- build
-FROM node:20-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json pnpm-lock.yaml tsconfig.json ./
@@ -14,14 +14,14 @@ COPY src ./src
 RUN corepack enable && pnpm build
 
 # ---------- prod deps (prune)
-FROM node:20-alpine AS proddeps
+FROM node:24-alpine AS proddeps
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json pnpm-lock.yaml ./
 RUN corepack enable && pnpm prune --prod
 
 # ---------- runtime
-FROM node:20-alpine
+FROM node:24-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 RUN apk add --no-cache curl
