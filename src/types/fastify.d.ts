@@ -1,14 +1,28 @@
-import '@fastify/jwt';
-import 'fastify';
-import type { Registry, Histogram, Counter } from 'prom-client';
+import "@fastify/jwt";
+import type { Registry, Histogram, Counter } from "prom-client";
 
-declare module 'fastify' {
+declare module "@fastify/jwt" {
+  interface FastifyJWT {
+  
+    payload: { sub: number; roles: string[]; jti?: string; type?: "refresh" };
+
+    user: { sub: number; roles: string[] };
+  }
+}
+
+declare module "fastify" {
   interface FastifyInstance {
-    refresh: import('@fastify/jwt').JWT;
+   
+    refresh: import("@fastify/jwt").FastifyJwt;
     auth: {
-      requireAuth: any;
-      requireRole: (roles: string[]) => any;
+      requireAuth: (req: any, reply: any) => Promise<void>;
+      requireRole: (roles: string[]) => (req: any, reply: any) => Promise<void>;
     };
+  }
+}
+
+declare module "fastify" {
+  interface FastifyInstance {
     metrics?: {
       registry: Registry;
       httpDur: Histogram<string>;
@@ -17,9 +31,11 @@ declare module 'fastify' {
   }
 }
 
-declare module '@fastify/jwt' {
+declare module "@fastify/jwt" {
   interface FastifyJWT {
-    payload: { sub: number; roles: string[]; jti?: string; type?: 'refresh' };
+    // imzaladığın payload
+    payload: { sub: number; roles: string[]; jti?: string; type?: "refresh" };
+    // req.user tipi
     user: { sub: number; roles: string[] };
   }
 }

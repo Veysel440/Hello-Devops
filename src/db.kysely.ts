@@ -31,7 +31,7 @@ export interface DB {
   refresh_tokens: RefreshTokensTable;
 }
 
-export const kdb = new Kysely<DB>({
+export const kdb = new Kysely<any>({
   dialect: new MysqlDialect({
     pool: mysql.createPool({
       host: env.DB_HOST,
@@ -40,7 +40,7 @@ export const kdb = new Kysely<DB>({
       password: env.DB_PASS,
       database: env.DB_NAME,
       waitForConnections: true,
-      connectionLimit: 10,
-    }),
+      connectionLimit: env.DB_POOL_MAX,
+    }) as any,
   }),
 });

@@ -13,6 +13,7 @@ import { registerMetrics } from "./plugins/metrics.js";
 import authPlugin from "./plugins/auth.js";
 import { healthRoutes } from "./routes/health.js";
 import { noteRoutes } from "./routes/notes.js";
+import { authRoutes } from "./routes/auth.js";
 import { buildInfo } from "./version.js";
 import * as notesRepo from "./repos/notesRepo.js";
 
@@ -27,7 +28,7 @@ export async function createApp(env = envReal, deps: Deps = {}) {
           "req.headers.authorization",
           "req.body.password",
           "req.body.token",
-          'res.headers["set-cookie"]',
+          'res.headers["set-cookie"]'
         ],
         censor: "[REDACTED]",
       },
@@ -69,9 +70,13 @@ export async function createApp(env = envReal, deps: Deps = {}) {
 
   registerErrorHandler(app);
   registerMetrics(app);
+
   await app.register(authPlugin);
 
-  
+
+  const swaggerEnabled =
+    String((env as any).SWAGGER_ENABLED ?? "false").toLowerCase() === "true";
+
   await app.register(basicAuth, {
     validate: async (u, p) => {
       if (u !== env.DOCS_USER || p !== env.DOCS_PASS) throw new Error("Unauthorized");
@@ -79,7 +84,6 @@ export async function createApp(env = envReal, deps: Deps = {}) {
     authenticate: { realm: "docs" },
   });
 
-  const swaggerEnabled = env.SWAGGER_ENABLED;
   if (swaggerEnabled) {
     await app.register(swagger, {
       openapi: {
@@ -103,8 +107,9 @@ export async function createApp(env = envReal, deps: Deps = {}) {
     );
   }
 
-  await app.register(healthRoutes);
 
+  await app.register(healthRoutes);
+  await app.register(authRoutes);
   await app.register(async (inst) =>
     noteRoutes(inst, { repo: deps.notesRepo ?? notesRepo })
   );

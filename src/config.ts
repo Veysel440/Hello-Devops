@@ -15,6 +15,11 @@ const EnvSchema = z.object({
   DB_USER: z.string().default("root"),
   DB_PASS: z.string().default(""),
 
+  DB_POOL_MAX: z.coerce.number().default(10),
+  DB_POOL_QUEUE: z.coerce.number().default(0),
+  DB_STMT_TIMEOUT: z.coerce.number().default(5000),
+  DB_SLOW_MS: z.coerce.number().default(300),
+
   JWT_ACCESS_SECRET: z.string().default("dev-access"),
   JWT_REFRESH_SECRET: z.string().default("dev-refresh"),
   JWT_ACCESS_TTL: z.string().default("15m"),
@@ -27,10 +32,8 @@ const EnvSchema = z.object({
   REQUEST_TIMEOUT: z.coerce.number().default(15_000),
   HELMET_HSTS: Bool.default(false),
 
-  // ↓ EKLENDİ
   SWAGGER_ENABLED: Bool.default(false),
 
-  // docs basic auth
   DOCS_USER: z.string().default("admin"),
   DOCS_PASS: z.string().default("admin"),
 });

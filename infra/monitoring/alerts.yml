@@ -1,14 +1,53 @@
 groups:
-  - name: app
+  - name: api.recording
+    interval: 30s
     rules:
-      - alert: HighP95Latency
-        expr: histogram_quantile(0.95, sum(rate(http_request_duration_ms_bucket[5m])) by (le)) > 0.300
-        for: 5m
-        labels: { severity: warning }
-        annotations: { summary: "p95 latency > 300ms" }
+      - record: job:http_request_duration_ms:p95
+        expr: histogram_quantile(
+          0.95,
+          sum by (le) (rate(http_request_duration_ms_bucket[5m]))
+          )
+      - record: job_route:http_request_duration_ms:p95
+        expr: histogram_quantile(
+          0.95,
+          sum by (le, route) (rate(http_request_duration_ms_bucket[5m]))
+          )
 
-      - alert: High5xxRate
-        expr: sum(rate(http_request_duration_ms_count{status=~"5.."}[5m])) / sum(rate(http_request_duration_ms_count[5m])) > 0.05
+  - name: api.alerts
+    interval: 30s
+    rules:
+      - alert: ApiDown
+        expr: absent(up{job="api"} == 1)
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "API scrape edilemiyor (job=api)"
+          description: "Prometheus job=api hedefini 2+ dk göremedi."
+
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_request_duration_ms_count{status=~"5.."}[5m]))
+          /
+          sum(rate(http_request_duration_ms_count[5m]))
+          > 0.05
         for: 5m
         labels: { severity: critical }
-        annotations: { summary: "5xx ratio > 5%" }
+        annotations:
+          summary: "5xx oranı > 5% (5m)"
+          description: "Sunucu hata oranı yüksek."
+
+      - alert: HighLatencyP95
+        expr: job:http_request_duration_ms:p95 > 500
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "p95 latency > 500ms (10m)"
+          description: "Genel p95 gecikmesi 500ms üstünde."
+
+      - alert: RouteHighLatencyP95
+        expr: job_route:http_request_duration_ms:p95{route!="/metrics"} > 700
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "Rota p95 > 700ms"
+          description: "route={{ $labels.route }} p95 {{ $value }}ms"
