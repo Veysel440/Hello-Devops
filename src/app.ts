@@ -3,30 +3,36 @@ import Fastify from "fastify";
 import helmet from "@fastify/helmet";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
+import basicAuth from "@fastify/basic-auth";
+import swagger from "@fastify/swagger";
+import swaggerUI from "@fastify/swagger-ui";
 import { env as envReal } from "./config.js";
 import { registerErrorHandler } from "./errors.js";
 import { registerMetrics } from "./plugins/metrics.js";
+import authPlugin from "./plugins/auth.js";
 import { healthRoutes } from "./routes/health.js";
 import { noteRoutes } from "./routes/notes.js";
+import { buildInfo } from "./version.js";
 
 export async function createApp(env = envReal) {
-  const app = Fastify({
-    logger: {
-      level: "info",
-      redact: {
-        paths: [
-          "req.headers.authorization",
-          "res.headers.set-cookie",
-          "body.password",
-          "body.token",
-        ],
-        censor: "[REDACTED]",
-      },
-    },
-    genReqId: () => crypto.randomUUID(),
-    requestTimeout: env.REQUEST_TIMEOUT,
-    bodyLimit: env.BODY_LIMIT,
-  });
+ const app = Fastify({
+  logger: {
+    level: "info",
+    redact: {
+      // 🔧 düzeltildi: set-cookie için bracket notasyon
+      paths: [
+        'req.headers.authorization',
+        'res.headers["set-cookie"]',
+        'req.body.password',
+        'req.body.token'
+      ],
+      censor: "[REDACTED]"
+    }
+  },
+  genReqId: () => crypto.randomUUID(),
+  requestTimeout: env.REQUEST_TIMEOUT,
+  bodyLimit: env.BODY_LIMIT
+});
 
   await app.register(helmet, {
     global: true,
@@ -35,15 +41,14 @@ export async function createApp(env = envReal) {
     crossOriginResourcePolicy: { policy: "cross-origin" },
   });
 
-  const origins =
-    env.CORS_ORIGINS === "*"
-      ? true
-      : env.CORS_ORIGINS.split(",").map((s) => s.trim());
+  const origins = env.CORS_ORIGINS === "*"
+    ? true
+    : env.CORS_ORIGINS.split(",").map((s) => s.trim());
 
   await app.register(cors, {
     origin: origins,
-    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"],
+    methods: ["GET","POST","PATCH","DELETE","OPTIONS"],
+    allowedHeaders: ["Content-Type","Authorization","X-Request-Id"],
     credentials: true,
   });
 
@@ -59,7 +64,30 @@ export async function createApp(env = envReal) {
   });
 
   registerErrorHandler(app);
-  registerMetrics(app);          
+  registerMetrics(app);
+  await app.register(authPlugin);
+
+  await app.register(basicAuth, {
+  validate: async (u, p) => {
+    if (u !== env.DOCS_USER || p !== env.DOCS_PASS) throw new Error("Unauthorized");
+  },
+  authenticate: { realm: "docs" },
+});
+
+await app.register(swagger, {
+  openapi: {
+    info: { title: "Hello DevOps API", version: buildInfo.version },
+    components: { securitySchemes: { bearerAuth: { type: "http", scheme: "bearer" } } },
+  },
+});
+
+await app.register(swaggerUI, {
+  routePrefix: "/docs",
+  staticCSP: true,
+  transformStaticCSP: (h) => h,
+});
+
+
   await app.register(healthRoutes);
   await app.register(noteRoutes);
 

@@ -61,3 +61,4 @@ export function registerMetrics(app: FastifyInstance) {
 
   app.decorate("metrics", { registry, httpDur, notesCreated });
 }
+
