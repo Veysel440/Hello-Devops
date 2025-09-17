@@ -9,6 +9,21 @@ export const listNotes = (): Promise<Selectable<NotesTable>[]> =>
      .limit(50)
      .execute();
 
+export const listNotesPage = async (cursor?: number, limit = 50) => {
+  const capped = Math.min(Math.max(limit, 1), 100);
+  const base = kdb
+    .selectFrom("notes")
+    .select(["id","msg","created_at"])
+    .orderBy("id","desc")
+    .limit(capped);
+
+  const rows = cursor
+    ? await base.where("id","<",cursor).execute()
+    : await base.execute();
+
+  return rows;
+};
+
 export const getNote = (id: number): Promise<Selectable<NotesTable>[]> =>
   kdb.selectFrom("notes")
      .select(["id","msg","created_at"])
@@ -30,3 +45,7 @@ export const deleteNote = (id: number) =>
   kdb.deleteFrom("notes")
      .where("id","=",id)
      .executeTakeFirst();
+
+export const ping = async () => {
+  await kdb.selectNoFrom(({ eb }) => eb.lit(1).as("ok")).execute();
+};

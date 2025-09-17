@@ -1,9 +1,15 @@
 import type { FastifyInstance } from "fastify";
-import { pool } from "../db.js";
-import { buildInfo } from "../version.js";
+import { ping } from "../repos/notesRepo.js";
 
 export async function healthRoutes(app: FastifyInstance) {
   app.get("/healthz", async () => ({ ok: true }));
-  app.get("/readyz", async () => { await pool.query("SELECT 1"); return { ok: true }; });
-  app.get("/version", async () => buildInfo);
+
+  app.get("/readyz", async (_req, reply) => {
+    try {
+      await ping();
+      return { ready: true };
+    } catch {
+      return reply.code(503).send({ ready: false });
+    }
+  });
 }

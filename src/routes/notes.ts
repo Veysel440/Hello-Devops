@@ -14,8 +14,34 @@ const NoteSchema = {
 
 export async function noteRoutes(app: FastifyInstance) {
   app.get("/v1/notes",
-    { schema: { tags: ["notes"], response: { 200: { type: "array", items: NoteSchema } } } },
-    async () => repo.listNotes()
+    { schema: {
+        tags: ["notes"],
+        querystring: {
+          type: "object",
+          properties: {
+            cursor: { type: "number", nullable: true },
+            limit: { type: "number", minimum: 1, maximum: 100, default: 50 }
+          }
+        },
+        response: {
+          200: {
+            type: "object",
+            properties: {
+              items: { type: "array", items: NoteSchema },
+              nextCursor: { type: "number", nullable: true }
+            },
+            required: ["items"]
+          }
+        }
+      } },
+    async (req) => {
+      const q = req.query as { cursor?: number; limit?: number };
+      const items = await repo.listNotesPage(q.cursor, q.limit ?? 50);
+      const nextCursor = items.length && items.length === Math.min(q.limit ?? 50, 100)
+        ? items[items.length - 1].id
+        : null;
+      return { items, nextCursor };
+    }
   );
 
   app.get("/v1/notes/:id",
@@ -42,8 +68,7 @@ export async function noteRoutes(app: FastifyInstance) {
       const body = NoteCreate.parse(req.body);
       const r = await repo.createNote(body.msg);
       const id = Number(r.insertId ?? 0n);
-      const rows = id ? await repo.getNote(id) : await repo.listNotes();
-      const created = id ? rows[0] : rows.find(n => n.msg === body.msg);
+      const [created] = await repo.getNote(id);
       app.metrics?.notesCreated.inc();
       return reply.code(201).send(created ?? { id, msg: body.msg, created_at: new Date() });
     }
@@ -60,10 +85,10 @@ export async function noteRoutes(app: FastifyInstance) {
       const { id } = NoteId.parse(req.params);
       const body = NoteCreate.parse(req.body);
       const res = await repo.updateNote(id, body.msg);
-      // @ts-ignore Kysely MySQL döndürümü
+      // @ts-ignore Kysely MySQL sonucu
       if (!res || res.numUpdatedRows === 0n) return reply.code(404).send({ error: "not_found" });
-      const rows = await repo.getNote(id);
-      return rows[0];
+      const [row] = await repo.getNote(id);
+      return row;
     }
   );
 
