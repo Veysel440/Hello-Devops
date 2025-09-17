@@ -1,4 +1,3 @@
-// src/app.ts
 import crypto from "node:crypto";
 import Fastify from "fastify";
 import helmet from "@fastify/helmet";
@@ -24,12 +23,11 @@ export async function createApp(env = envReal, deps: Deps = {}) {
     logger: {
       level: "info",
       redact: {
-        // pino için doğru path gösterimi
         paths: [
-          'req.headers.authorization',
-          'req.body.password',
-          'req.body.token',
-          'res.headers["set-cookie"]'
+          "req.headers.authorization",
+          "req.body.password",
+          "req.body.token",
+          'res.headers["set-cookie"]',
         ],
         censor: "[REDACTED]",
       },
@@ -39,7 +37,6 @@ export async function createApp(env = envReal, deps: Deps = {}) {
     bodyLimit: env.BODY_LIMIT,
   });
 
-  // ---- Güvenlik başlıkları
   await app.register(helmet, {
     global: true,
     contentSecurityPolicy: false,
@@ -47,11 +44,11 @@ export async function createApp(env = envReal, deps: Deps = {}) {
     crossOriginResourcePolicy: { policy: "cross-origin" },
   });
 
-  // ---- CORS
   const origins =
     env.CORS_ORIGINS === "*"
       ? true
       : env.CORS_ORIGINS.split(",").map((s) => s.trim());
+
   await app.register(cors, {
     origin: origins,
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
@@ -59,7 +56,6 @@ export async function createApp(env = envReal, deps: Deps = {}) {
     credentials: true,
   });
 
-  // ---- Rate limit
   await app.register(rateLimit, {
     max: env.RATE_LIMIT_MAX,
     timeWindow: env.RATE_LIMIT_TIME,
@@ -71,21 +67,11 @@ export async function createApp(env = envReal, deps: Deps = {}) {
     },
   });
 
-  // ---- Hata & metrikler & JWT
   registerErrorHandler(app);
   registerMetrics(app);
   await app.register(authPlugin);
 
-  // ---- Swagger (OpenAPI) + UI (Basic Auth ile koru)
-  await app.register(swagger, {
-    openapi: {
-      info: { title: "Hello DevOps API", version: buildInfo.version },
-      components: {
-        securitySchemes: { bearerAuth: { type: "http", scheme: "bearer" } },
-      },
-    },
-  });
-
+  
   await app.register(basicAuth, {
     validate: async (u, p) => {
       if (u !== env.DOCS_USER || p !== env.DOCS_PASS) throw new Error("Unauthorized");
@@ -93,23 +79,32 @@ export async function createApp(env = envReal, deps: Deps = {}) {
     authenticate: { realm: "docs" },
   });
 
-  // /docs alt-scope: tüm UI endpoint’leri basic-auth ister
-  await app.register(
-    async (i) => {
-      i.addHook("onRequest", i.basicAuth);
-      await i.register(swaggerUI, {
-        routePrefix: "/",               // scope prefix ile birleşecek → /docs
-        staticCSP: true,
-        transformStaticCSP: (h) => h,
-      });
-    },
-    { prefix: "/docs" }
-  );
+  const swaggerEnabled = env.SWAGGER_ENABLED;
+  if (swaggerEnabled) {
+    await app.register(swagger, {
+      openapi: {
+        info: { title: "Hello DevOps API", version: buildInfo.version },
+        components: {
+          securitySchemes: { bearerAuth: { type: "http", scheme: "bearer" } },
+        },
+      },
+    });
 
-  // ---- Routes
+    await app.register(
+      async (s) => {
+        s.addHook("onRequest", s.basicAuth as any);
+        await s.register(swaggerUI, {
+          routePrefix: "/",
+          staticCSP: true,
+          transformStaticCSP: (h) => h,
+        });
+      },
+      { prefix: "/docs" }
+    );
+  }
+
   await app.register(healthRoutes);
 
-  // DI ile tek kez kayıt
   await app.register(async (inst) =>
     noteRoutes(inst, { repo: deps.notesRepo ?? notesRepo })
   );

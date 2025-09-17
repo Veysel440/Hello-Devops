@@ -38,13 +38,13 @@ export function registerMetrics(app: FastifyInstance) {
 
   app.addHook("onRequest", (req, reply, done) => {
     reply.header("x-request-id", req.id);
-   
+    // @ts-expect-error augment
     req.__start = performance.now(); 
     done();
   });
 
   app.addHook("onResponse", (req, reply, done) => {
-  
+    // @ts-expect-error augment
     const start: number = req.__start ?? performance.now();
     const durMs = performance.now() - start;
     const route = req.routeOptions?.url ?? req.url;
@@ -61,4 +61,3 @@ export function registerMetrics(app: FastifyInstance) {
 
   app.decorate("metrics", { registry, httpDur, notesCreated });
 }
-

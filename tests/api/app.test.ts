@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import { createApp } from "../../src/app.js";
 
 const fakeRepo = {
@@ -8,6 +8,10 @@ const fakeRepo = {
   updateNote: async () => ({ numUpdatedRows: 1n }),
   deleteNote: async () => ({ numDeletedRows: 1n }),
 };
+
+beforeAll(() => {
+  process.env.SWAGGER_ENABLED = "false";
+});
 
 describe("API", () => {
   it("healthz", async () => {
@@ -19,6 +23,10 @@ describe("API", () => {
   it("list notes", async () => {
     const app = await createApp(undefined, { notesRepo: fakeRepo as any });
     const r = await app.inject({ method: "GET", url: "/v1/notes" });
-    expect(r.json()).toEqual({ items: [{ id: 1, msg: "hi", created_at: "now" }], nextCursor: null });
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toEqual({
+      items: [{ id: 1, msg: "hi", created_at: "now" }],
+      nextCursor: null,
+    });
   });
 });

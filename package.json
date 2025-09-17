@@ -24,6 +24,7 @@
     "@fastify/rate-limit": "^9.0.0",
     "@fastify/swagger": "^8",
     "@fastify/swagger-ui": "^1",
+    "bcryptjs": "^3.0.2",
     "dotenv": "^16.4.5",
     "fastify": "^4.29.1",
     "fastify-plugin": "^5.0.1",

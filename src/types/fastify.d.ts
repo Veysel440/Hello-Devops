@@ -1,28 +1,25 @@
-import type { Registry, Histogram, Counter } from "prom-client";
-import "@fastify/jwt";
+import '@fastify/jwt';
+import 'fastify';
+import type { Registry, Histogram, Counter } from 'prom-client';
 
-declare module "@fastify/jwt" {
-  interface FastifyJWT {
-    payload: { sub: number; roles: string[] };
-    user: { sub: number; roles: string[] };
+declare module 'fastify' {
+  interface FastifyInstance {
+    refresh: import('@fastify/jwt').JWT;
+    auth: {
+      requireAuth: any;
+      requireRole: (roles: string[]) => any;
+    };
+    metrics?: {
+      registry: Registry;
+      httpDur: Histogram<string>;
+      notesCreated: Counter<string>;
+    };
   }
 }
 
-type JwtNs = {
-  sign: (payload: import("@fastify/jwt").FastifyJWT["payload"], options?: import("@fastify/jwt").SignOptions) => string;
-  verify: (token: string, options?: import("@fastify/jwt").VerifyOptions) => import("@fastify/jwt").FastifyJWT["user"];
-  decode: (token: string) => unknown;
-};
-
-declare module "fastify" {
-  interface FastifyRequest { __start?: number }
-  interface FastifyInstance {
-    metrics: { registry: Registry; httpDur: Histogram<string>; notesCreated: Counter<string> };
-    auth: {
-      requireAuth: import("fastify").preHandlerHookHandler;
-      requireRole: (roles: string[]) => import("fastify").preHandlerHookHandler;
-    };
-    // jwt namespace='refresh'
-    refresh: JwtNs;
+declare module '@fastify/jwt' {
+  interface FastifyJWT {
+    payload: { sub: number; roles: string[]; jti?: string; type?: 'refresh' };
+    user: { sub: number; roles: string[] };
   }
 }

@@ -1,13 +1,35 @@
-import { Kysely, MysqlDialect, Generated } from "kysely";
-import mysql from "mysql2";
-import { env } from "./config.js";
+import { Kysely, MysqlDialect, Generated, ColumnType } from 'kysely';
+import mysql from 'mysql2/promise';
+import { env } from './config.js';
 
 export interface NotesTable {
   id: Generated<number>;
   msg: string;
-  created_at: Generated<Date>;
+  created_at: ColumnType<Date, Date | undefined, never>;
 }
-export interface DB { notes: NotesTable }
+
+export interface UsersTable {
+  id: Generated<number>;
+  username: string;
+  password_hash: string;
+  roles: string;
+  created_at: ColumnType<Date, Date | undefined, never>;
+}
+
+export interface RefreshTokensTable {
+  id: Generated<number>;
+  user_id: number;
+  jti: string;
+  created_at: ColumnType<Date, Date | undefined, never>;
+  expires_at: Date;
+  revoked_at: ColumnType<Date | null, Date | null | undefined, Date | null>;
+}
+
+export interface DB {
+  notes: NotesTable;
+  users: UsersTable;
+  refresh_tokens: RefreshTokensTable;
+}
 
 export const kdb = new Kysely<DB>({
   dialect: new MysqlDialect({

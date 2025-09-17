@@ -1,5 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import { createApp } from "../../src/app.js";
+
+beforeAll(() => {
+  process.env.SWAGGER_ENABLED = "false";
+});
 
 describe("health", () => {
   it("healthz 200", async () => {
