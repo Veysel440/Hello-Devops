@@ -117,7 +117,7 @@ jobs:
           severity: "CRITICAL,HIGH"
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3.6.0
+        uses: sigstore/cosign-installer@v3.10.0
       - name: Cosign sign (keyless)
         env: { COSIGN_EXPERIMENTAL: 1 }
         run: cosign sign --yes ghcr.io/${{ github.repository }}:${{ github.sha }}
@@ -127,7 +127,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions: { id-token: write, contents: read, packages: read }
     steps:
-      - uses: sigstore/cosign-installer@v3.6.0
+      - uses: sigstore/cosign-installer@v3.10.0
       - name: Verify signature
         env: { COSIGN_EXPERIMENTAL: 1 }
         run: |
